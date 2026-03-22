@@ -1,0 +1,577 @@
+---
+title: "Vector Autoregression (VAR) Model"
+author: "Ibikunle Gabriel"
+date: '`r Sys.Date()`'
+output:
+  
+  html_document: 
+    theme:
+      bootswatch: superhero
+    toc: TRUE
+  word_document: default
+fig_height: 3
+fig_width: 6 
+fontsize: 9pt
+---
+
+## **What is a VAR Model?**
+A Vector Autoregression (VAR) model is a time series model in which multiple variables depend on their own past values each other’s past values.
+So instead of modeling one variable, you model a system of variables together.
+
+**Loading required packages**
+
+```{r setup, include=FALSE}
+# Load the packages
+library(vars)
+library(tseries)
+library(urca)
+library(ggplot2)
+library(reshape2)
+library(dplyr)
+library(tidyr)
+library(bslib)
+```
+
+
+**Set and confirm the working directory**
+```{r setup_root_dir, include=FALSE}
+# Set working directory for all chunks during knitting
+knitr::opts_knit$set(root.dir = "C:/Users/Hp/Documents/ARDL")
+```
+
+```{r}
+getwd()
+```
+
+
+**load the data into the R environment **
+```{r}
+data <- read.csv("C:\\Users\\Hp\\Documents\\ARDL\\ECON DEVELOPMENT DATA.csv")
+```
+
+
+**Select the Variables needed and convert t time series object**
+```{r}
+data_var <- data[, c("ECNDEV","INF", "EDU", "K", "HEA", "UNEMP")]
+```
+
+```{r}
+data_var <- ts(data_var)
+```
+
+
+**Determine Optimal Lag Length**
+```{r}
+lag_selection <- VARselect(data_var, lag.max = 10, type = "const")
+lag_selection
+```
+
+
+```{r}
+lag_selection$selection
+```
+
+**Estimate VAR Model**
+```{r}
+var_model <- VAR(data_var, p = 2, type = "const")
+
+summary(var_model)
+```
+
+**Check Stability of VAR**
+```{r}
+stability <- roots(var_model)
+stability
+
+plot(stability)
+```
+
+*Diagnostic Tests*
+**Serial Correlation**
+```{r}
+serial.test(var_model, lags.pt = 16, type = "PT.asymptotic")
+```
+
+**Heteroskedasticity**
+```{r}
+arch.test(var_model, lags.multi = 5)
+```
+
+**Normality**
+```{r}
+normality.test(var_model)
+```
+
+**Impulse Response Function (IRF)**
+
+```{r}
+irf_result <- irf(var_model,
+                  impulse = "ECNDEV",
+                  response = "HEA",
+                  n.ahead = 10,
+                  boot = TRUE)
+
+plot(irf_result)
+```
+```{r}
+irf_result1 <- irf(var_model,
+                  impulse = "ECNDEV",
+                  response = "HEA",
+                  n.ahead = 10,
+                  boot = TRUE)
+
+plot(irf_result1)
+```
+
+
+```{r}
+irf_result2 <- irf(var_model,
+                   impulse = "ECNDEV",
+                   response = "INF",
+                   n.ahead = 10,
+                   boot = TRUE)
+
+plot(irf_result2)
+```
+
+
+```{r}
+irf_result3 <- irf(var_model,
+                   impulse = "ECNDEV",
+                   response = "EDU",
+                   n.ahead = 10,
+                   boot = TRUE)
+
+plot(irf_result3)
+```
+
+
+```{r}
+irf_result4 <- irf(var_model,
+                   impulse = "ECNDEV",
+                   response = "K",
+                   n.ahead = 10,
+                   boot = TRUE)
+
+plot(irf_result4)
+```
+
+
+```{r}
+irf_result5 <- irf(var_model,
+                   impulse = "ECNDEV",
+                   response = "UNEMP",
+                   n.ahead = 10,
+                   boot = TRUE)
+
+plot(irf_result5)
+
+```
+
+**Get all responses automatically**
+
+```{r}
+irf_all <- irf(var_model, n.ahead = 10, boot = TRUE)
+plot(irf_all)
+```
+
+**Forecast Error Variance Decomposition (FEVD)**
+```{r}
+fevd_result <- fevd(var_model, n.ahead = 10)
+
+fevd_result
+# Plot FEVD
+plot(fevd_result)
+```
+
+
+**Forecast (Optional)**
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+forecast_var <- predict(var_model, n.ahead = 10)
+plot(forecast_var)
+```
+
+*------------ VAR with retail dataset-----------------*
+
+
+```{r}
+df1 <- read.csv("C:\\Users\\Hp\\Documents\\ARDL\\retail_sales_dataset.csv")
+```
+
+
+```{r}
+# Select the Variables
+data_var <- df1[, c("Age", "Price", "TotalAmount","Quantity")]
+```
+
+
+```{r}
+# Convert to time series object
+data_var <- ts(data_var)
+```
+
+```{r}
+# Determine Optimal Lag Length
+lag_selection <- VARselect(data_var, lag.max = 10, type = "const")
+lag_selection
+lag_selection$selection
+```
+
+
+```{r}
+# Estimate VAR Model
+var_model <- VAR(data_var, p = 2, type = "const")
+summary(var_model)
+```
+
+
+```{r}
+# Check Stability of VAR
+stability <- roots(var_model)
+stability
+roots_var <- roots(var_model)
+```
+
+```{r}
+# Plot empty coordinate system
+plot(Re(roots_var), Im(roots_var),
+     xlim = c(-1.5, 1.5),
+     ylim = c(-1.5, 1.5),
+     xlab = "Real Part",
+     ylab = "Imaginary Part",
+     main = "Stability of VAR Model",
+     pch = 19,
+     col = "blue")
+# Add unit circle
+theta <- seq(0, 2*pi, length = 500)
+lines(cos(theta), sin(theta), col = "red", lwd = 2)
+# Add horizontal and vertical axis
+abline(h = 0, v = 0, col = "gray")
+
+# Add grid
+grid(col = "lightgray")
+
+# Save the plot automatically to your working directory
+ggsave("Stability_plot.png", width = 12, height = 8, dpi = 300)
+
+```
+
+**Diagnostic Tests**
+```{r}
+## Serial Correlation
+serial.test(var_model, lags.pt = 16, type = "PT.asymptotic")
+```
+
+
+```{r}
+## Heteroskedasticity
+arch.test(var_model, lags.multi = 5)
+```
+
+
+
+```{r}
+# Normality
+normality.test(var_model)
+```
+
+**Impulse Response Function (IRF)**
+
+```{r}
+
+# Plot of just two variables
+irf_result <- irf(var_model,
+                  impulse = "Price",
+                  response = "TotalAmount",
+                  n.ahead = 10,
+                  boot = TRUE)
+
+plot(irf_result)
+```
+```{r}
+
+# Plot of just two variables
+irf_result1 <- irf(var_model,
+                  impulse = "Price",
+                  response = "TotalAmount",
+                  n.ahead = 10,
+                  boot = TRUE)
+
+plot(irf_result1)
+```
+```{r}
+
+# Plot of just two variables
+irf_result2 <- irf(var_model,
+                  impulse = "Price",
+                  response = "Age",
+                  n.ahead = 10,
+                  boot = TRUE)
+
+plot(irf_result2)
+```
+
+```{r}
+
+# Plot of just two variables
+irf_result3 <- irf(var_model,
+                  impulse = "Price",
+                  response = "Quantity",
+                  n.ahead = 10,
+                  boot = TRUE)
+
+plot(irf_result3)
+```
+
+```{r}
+# all responses automatically
+irf_all <- irf(var_model, n.ahead = 10, boot = TRUE)
+plot(irf_all)
+```
+
+
+```{r}
+# all responses automatically
+irf_all <- irf(var_model, n.ahead = 10, boot = TRUE)
+plot(irf_all)
+```
+
+```{r}
+# A more publishable plot
+irf_all <- irf(var_model,
+               n.ahead = 10,
+               boot = TRUE,
+               ci = 0.95)
+
+irf_df <- do.call(rbind, lapply(names(irf_all$irf), function(imp) {
+  
+  responses <- irf_all$irf[[imp]]
+  lower <- irf_all$Lower[[imp]]
+  upper <- irf_all$Upper[[imp]]
+  
+  df <- as.data.frame(responses)
+  df$Horizon <- 0:(nrow(df)-1)
+  df$Impulse <- imp
+  
+  df_long <- pivot_longer(df,
+                          cols = -c(Horizon, Impulse),
+                          names_to = "Response",
+                          values_to = "IRF")
+  
+  df_long$Lower <- as.vector(lower)
+  df_long$Upper <- as.vector(upper)
+  
+  df_long
+}))
+
+
+ggplot(irf_df, aes(x = Horizon, y = IRF)) +
+  geom_ribbon(aes(ymin = Lower, ymax = Upper), fill = "skyblue", alpha = 0.3) +
+  geom_line(color = "darkblue", size = 1) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "black") +
+  facet_grid(Response ~ Impulse) +
+  labs(title = "Impulse Response Functions",
+       x = "Forecast Horizon",
+       y = "Response") +
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(face = "bold", hjust = 0.5),
+    strip.text = element_text(face = "bold"),
+    panel.grid.minor = element_blank()
+  )
+
+# Save the plot automatically to your working directory
+ggsave("IRF_plot.png", width = 12, height = 8, dpi = 300)
+```
+
+
+```{r}
+par(mar = c(2, 2, 2, 2))  # default margins
+# Forecast Error Variance Decomposition (FEVD)
+fevd_result <- fevd(var_model, n.ahead = 10)
+
+fevd_result
+# Plot FEVD
+plot(fevd_result)
+```
+
+```{r}
+# A more publishable plot
+fevd_df <- do.call(rbind, lapply(names(fevd_result), function(var) {
+  
+  df <- as.data.frame(fevd_result[[var]])
+  df$Horizon <- 1:nrow(df)
+  df$Variable <- var
+  
+  df
+  
+}))
+
+fevd_long <- melt(fevd_df,
+                  id.vars = c("Horizon", "Variable"),
+                  variable.name = "Shock",
+                  value.name = "Contribution")
+
+ggplot(fevd_long, aes(x = Horizon, y = Contribution, fill = Shock)) +
+  geom_area(position = "stack", alpha = 0.9) +
+  facet_wrap(~Variable, scales = "free_y") +
+  labs(title = "Forecast Error Variance Decomposition",
+       x = "Forecast Horizon",
+       y = "Variance Contribution",
+       fill = "Shock Variable") +
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(face = "bold", hjust = 0.5),
+    legend.position = "bottom",
+    strip.text = element_text(face = "bold")
+  )+
+  scale_fill_brewer(palette = "Set2")
+
+# Save the plot automatically to your working directory
+ggsave("FEVD_plot.png", width = 10, height = 6, dpi = 300)
+```
+
+```{r}
+# Forecast (Optional)
+forecast_var <- predict(var_model, n.ahead = 2)
+par(mar = c(2, 2, 2, 2))
+plot(forecast_var)
+```
+
+```{r}
+
+# Forecast variance plot with ggplot
+forecast_var <- predict(var_model, n.ahead = 10, ci = 0.95)
+library(dplyr)
+library(tidyr)
+
+forecast_df <- do.call(rbind, lapply(names(forecast_var$fcst), function(var){
+  
+  df <- as.data.frame(forecast_var$fcst[[var]])
+  
+  df$Horizon <- 1:nrow(df)
+  df$Variable <- var
+  
+  df
+}))
+
+library(ggplot2)
+
+ggplot(forecast_df, aes(x = Horizon, y = fcst)) +
+  
+  geom_ribbon(
+    aes(ymin = lower, ymax = upper),
+    fill = "grey70",
+    alpha = 0.4
+  ) +
+  
+  geom_line(
+    color = "green",
+    linewidth = 1
+  ) +
+  
+  facet_wrap(~Variable, scales = "free_y") +
+  
+  labs(
+    title = "VAR Forecasts with 95% Confidence Intervals",
+    x = "Forecast Horizon",
+    y = "Forecast Value"
+  ) +
+  
+  theme_classic(base_size = 14) +
+  
+  theme(
+    plot.title = element_text(face = "bold", hjust = 0.5),
+    strip.text = element_text(face = "bold")
+  )
+```
+
+
+```{r}
+forecast_var <- predict(var_model, n.ahead = 10, ci = 0.95)
+
+forecast_df <- do.call(rbind, lapply(names(forecast_var$fcst), function(var){
+  
+  df <- as.data.frame(forecast_var$fcst[[var]])
+  
+  df$Horizon <- 1:nrow(df)
+  df$Variable <- var
+  
+  df
+}))
+
+hist_df <- data.frame(data_var)
+
+hist_df$Time <- 1:nrow(hist_df)
+
+hist_long <- tidyr::pivot_longer(
+  hist_df,
+  cols = -Time,
+  names_to = "Variable",
+  values_to = "Value"
+)
+
+
+hist_df <- data.frame(data_var)
+
+hist_df$Time <- 1:nrow(hist_df)
+
+hist_long <- tidyr::pivot_longer(
+  hist_df,
+  cols = -Time,
+  names_to = "Variable",
+  values_to = "Value"
+)
+
+forecast_df$Time <- max(hist_long$Time) + forecast_df$Horizon
+
+ggplot() +
+  
+  # historical data
+  geom_line(
+    data = hist_long,
+    aes(x = Time, y = Value),
+    color = "black",
+    linewidth = 0.8
+  ) +
+  
+  # confidence interval
+  geom_ribbon(
+    data = forecast_df,
+    aes(x = Time, ymin = lower, ymax = upper),
+    fill = "grey70",
+    alpha = 0.4
+  ) +
+  
+  # forecast line
+  geom_line(
+    data = forecast_df,
+    aes(x = Time, y = fcst),
+    color = "blue",
+    linewidth = 1,
+    linetype = "dashed"
+  ) +
+  
+  facet_wrap(~Variable, scales = "free_y") +
+  
+  labs(
+    title = "VAR Forecast with Historical Data",
+    x = "Time",
+    y = "Value"
+  ) +
+  
+  theme_classic(base_size = 14) +
+  
+  theme(
+    plot.title = element_text(face = "bold", hjust = 0.5),
+    strip.text = element_text(face = "bold")
+  )
+```
+
+## References
+
+Pesaran, M. H., Shin, Y., & Smith, R. J. (2001).
+Bounds testing approaches to the analysis of level relationships. Journal of Applied Econometrics, 16(3), 289–326.https://doi.org/10.1002/jae.616
+
+Pesaran, M. H., & Smith, R. (1995).
+Estimating long-run relationships from dynamic heterogeneous panels. Journal of Econometrics, 68(1), 79–113.https://doi.org/10.1016/0304-4076(94)01644-F
